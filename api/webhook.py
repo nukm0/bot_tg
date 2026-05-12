@@ -3,48 +3,49 @@ import os
 from http.server import BaseHTTPRequestHandler
 import requests
 
-# Токен бота из переменных окружения Vercel
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+# Токен бота
+BOT_TOKEN = "8892504157:AAGrYBCYPOEr8hDzFNd9gWsjCgJa0LLB1po"
 
 def send_message(chat_id, text):
-    """Отправка сообщения через Telegram API"""
-    url = f"{TELEGRAM_API_URL}/sendMessage"
-    payload = {
+    """Отправляет сообщение пользователю"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {
         "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML"
+        "text": text
     }
-    requests.post(url, json=payload)
+    try:
+        requests.post(url, json=data, timeout=5)
+    except Exception as e:
+        print(f"Ошибка: {e}")
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        """Обработка входящих сообщений от Telegram"""
-        content_length = int(self.headers.get('Content-Length', 0))
-        post_data = self.rfile.read(content_length)
-        update = json.loads(post_data.decode('utf-8'))
+        """Telegram отправляет сюда все сообщения"""
+        length = int(self.headers.get('Content-Length', 0))
+        data = self.rfile.read(length)
+        update = json.loads(data)
         
-        # Обрабатываем сообщение
-        if "message" in update:
-            message = update["message"]
-            chat_id = message["chat"]["id"]
+        # Проверяем, есть ли сообщение
+        if 'message' in update:
+            msg = update['message']
+            chat_id = msg['chat']['id']
             
-            if "text" in message:
-                text = message["text"]
+            # Проверяем текст сообщения
+            if 'text' in msg:
+                text = msg['text']
                 
-                if text == "/start":
-                    send_message(chat_id, "Привет! 👋 Я бот, работающий на Vercel!")
-                else:
-                    send_message(chat_id, f"Вы написали: {text}")
+                # Если команда /start
+                if text == '/start':
+                    send_message(chat_id, "Привет!")
         
-        # Отвечаем Telegram, что всё в порядке
+        # Отвечаем Telegram, что всё обработано
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps({"status": "ok"}).encode())
+        self.wfile.write(json.dumps({"ok": True}).encode())
     
     def do_GET(self):
-        """Health check для мониторинга"""
+        """Проверка работоспособности"""
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
